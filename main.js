@@ -26,7 +26,6 @@ Promise.all([
 
   colorScale.domain(uniqueItems);
 
-  // rScaleは「半径」！
   const minA = d3.min(data, d => d.amount);
   const maxA = d3.max(data, d => d.amount);
   rScale.domain([minA, maxA]).range([12, 38]);
@@ -64,10 +63,23 @@ function drawMemberSelect() {
   });
 }
 
+// 議員ごとモード以外ではリストを隠す
+function toggleMemberSelect() {
+  const sel = document.getElementById("memberSelect");
+  const label = document.querySelector('label[for="memberSelect"]');
+  if (mode === "name") {
+	sel.style.display = "";
+	if (label) label.style.display = "";
+  } else {
+	sel.style.display = "none";
+	if (label) label.style.display = "none";
+  }
+}
+
 function addControls() {
-  d3.select("#modeAll").on("click", () => { mode="all"; updateBubbles(); });
-  d3.select("#modeName").on("click", () => { mode="name"; updateBubbles(); });
-  d3.select("#modeItem").on("click", () => { mode="item"; updateBubbles(); });
+  d3.select("#modeAll").on("click", async () => { mode="all"; await updateBubbles(); });
+  d3.select("#modeName").on("click", async () => { mode="name"; await updateBubbles(); });
+  d3.select("#modeItem").on("click", async () => { mode="item"; await updateBubbles(); });
   d3.select("#sizeSlider").on("input", updateBubbles);
   window.addEventListener("resize", resizeChart);
 }
@@ -81,6 +93,8 @@ function resizeChart() {
 }
 
 async function updateBubbles() {
+  toggleMemberSelect(); // ★ここでモードごとに議員リスト表示/非表示
+
   let showData = data;
   if (mode === "name" && currentMembers.length > 0)
 	showData = data.filter(d => currentMembers.includes(d.name));
@@ -100,9 +114,9 @@ async function updateBubbles() {
 	}));
 
 	runSimulation(nodes, centers, 450);
-	drawBubbles(nodes, centers);
-
-  } else if (mode === "item") {
+	await drawBubblesAsync(nodes, centers, 400);
+  }
+  else if (mode === "item") {
 	centers = uniqueItems.map((item, i) => ({
 	  item, x: width*(i+1)/(uniqueItems.length+1), y: height/2
 	}));
@@ -120,10 +134,9 @@ async function updateBubbles() {
 	}));
 
 	runSimulation(nodes, centers, 450);
-	drawBubbles(nodes, centers);
-
-  } else if (mode === "name") {
-	// -------- 議員別モード：最大化配置＋接触するなら最小まで縮小 --------
+	await drawBubblesAsync(nodes, centers, 400);
+  }
+  else if (mode === "name") {
 	const names = currentMembers.length ? currentMembers : uniqueNames;
 	const n = names.length;
 	const cols = Math.ceil(Math.sqrt(n));
@@ -152,7 +165,6 @@ async function updateBubbles() {
 	let finalR = tryR;
 	let lastNodes = null;
 
-	// できるだけ大きい半径で重ならない値を探す
 	while (overlap && tryR > minR) {
 	  nodes = showData.map(d => ({
 		...d,
@@ -163,7 +175,6 @@ async function updateBubbles() {
 
 	  runSimulation(nodes, centers, 200);
 
-	  // クラスタごと外接円を計算
 	  let clusters = names.map(name => {
 		let clusterNodes = nodes.filter(d => d.name === name);
 		if (clusterNodes.length === 0) return null;
@@ -175,7 +186,6 @@ async function updateBubbles() {
 		return {center, radius: outer};
 	  }).filter(Boolean);
 
-	  // クラスタ間で外接円が重なっていないか判定
 	  overlap = false;
 	  for (let i = 0; i < clusters.length; ++i) {
 		for (let j = i+1; j < clusters.length; ++j) {
@@ -200,7 +210,6 @@ async function updateBubbles() {
 	  }
 	}
 
-	// ★ もし「minR」まで縮めても接触してしまう場合は、さらに小さくして絶対ぶつからない値を探す
 	if (overlap && tryR <= minR) {
 	  let subMinR = minR;
 	  let trySubR = minR;
@@ -258,7 +267,7 @@ async function updateBubbles() {
 	}));
 
 	runSimulation(nodes, centers, 300);
-	drawBubbles(nodes, centers);
+	await drawBubblesAsync(nodes, centers, 400);
   }
 }
 
@@ -273,37 +282,8 @@ function runSimulation(nodes, centers, ticks = 400) {
   for (let i = 0; i < ticks; ++i) sim.tick();
 }
 
-// 描画（アニメーションなし）
-function drawBubbles(nodes, centers) {
-  let bubble = svg.selectAll("circle.bubble")
-	.data(nodes, d => d.name + d.item + d.amount);
-
-  bubble.join(
-	enter => enter.append("circle")
-	  .attr("class", "bubble")
-	  .attr("r", d => d.r)
-	  .attr("cx", d => d.x)
-	  .attr("cy", d => d.y)
-	  .attr("fill", d => colorScale(d.item))
-	  .attr("stroke", "#555")
-	  .attr("stroke-width", 1.2)
-	  .on("mousemove", function (e, d) { showTooltip(e, d); })
-	  .on("mouseleave", hideTooltip),
-	update => update
-	  .transition().duration(300)
-	  .attr("r", d => d.r)
-	  .attr("cx", d => d.x)
-	  .attr("cy", d => d.y)
-	  .attr("fill", d => colorScale(d.item))
-  );
-  bubble.exit().remove();
-
-  // クラスタラベル描画
-  drawLabels(centers);
-}
-
-// 描画（アニメーションつき、await可）
-function drawBubblesAsync(nodes, centers, duration=180) {
+// アニメーション描画
+function drawBubblesAsync(nodes, centers, duration=300) {
   return new Promise(resolve => {
 	let bubble = svg.selectAll("circle.bubble")
 	  .data(nodes, d => d.name + d.item + d.amount);
