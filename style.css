@@ -1,115 +1,97 @@
 body {
   margin: 0;
-  font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
-  background: #fafbfc;
+  padding: 0;
+  font-family: sans-serif;
+  background: #f7f7f7;
 }
-
-/* 上部固定レジェンド */
-#legendWrapper {
-  position: sticky;
-  top: 0;
-  width: 100%;
-  z-index: 100;
-  background: #fff;
-  padding: 10px 0 8px 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 8px;
 }
-
 #legendDiv {
+  margin-bottom: 6px;
+  padding: 4px 0 8px 0;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px #bbb2;
   display: flex;
   flex-wrap: wrap;
-  gap: 18px 26px;
-  justify-content: center;
-  align-items: center;
-  max-width: 1200px;
+  gap: 16px 12px;
 }
-
-#legendDiv span {
-  white-space: nowrap;
-  font-size: 15px;
+#controlArea {
+  margin-bottom: 12px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 12px;
 }
-
-#legendDiv svg {
-  margin-right: 6px;
-}
-
-/* 操作UI */
-#controls button,
-#controls select {
-  font-size: 15px;
-  margin-right: 4px;
-  border-radius: 5px;
-  border: 1px solid #bbb;
-  padding: 4px 12px;
-  background: #f7f7fa;
-  transition: background 0.15s;
-}
-#controls button:hover {
-  background: #e8eefc;
-}
-
-#controls label {
-  font-size: 15px;
+label[for="memberSelect"] {
   margin-left: 10px;
+  margin-right: 4px;
+  font-weight: 600;
+  font-size: 1.05em;
+}
+#memberSelect {
+  min-width: 110px;
+  font-size: 1em;
+  padding: 4px 7px;
+  border-radius: 7px;
+  border: 1px solid #ccc;
+}
+#sizeSlider {
+  margin-left: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+#bubbleChart {
+  /* SVGのwidth, heightはJavaScriptでのみ指定する。ここでwidth/heightを絶対に指定しないこと！ */
+  display: block;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 9px #aaa3;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+#tooltip {
+  position: absolute;
+  display: none;
+  z-index: 20;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px #4446;
+  font-size: 1.07em;
+  color: #222;
+  padding: 9px 18px 9px 12px;
+  border: 1px solid #ddd;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
-/* バブルチャートエリア */
-#bubbleArea {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  margin-top: 18px;
-}
-
-/* レスポンシブ対応 */
-@media (max-width: 1100px) {
-  #bubbleChart { width: 98vw !important; height: 66vw !important; }
-  #legendDiv { max-width: 98vw; }
-}
-
-/* --- ★スマホ対応強化★ --- */
 @media (max-width: 700px) {
-  #controls {
+  .container {
+	max-width: 100vw;
+	padding: 4px;
+  }
+  #legendDiv {
+	font-size: 0.98em;
+	padding: 2px 0 5px 0;
+	gap: 12px 8px;
+	max-width: 99vw;
+  }
+  #controlArea {
 	font-size: 12px;
-	display: flex;
 	flex-direction: column;
 	align-items: stretch;
 	gap: 8px;
 	max-width: 98vw;
 	margin: 8px auto;
   }
-  #controls button,
-  #controls select,
-  #controls label,
-  #sizeSlider {
-	width: 100% !important;
-	margin-right: 0 !important;
-	margin-bottom: 6px;
-	box-sizing: border-box;
-  }
   #memberSelect {
 	min-width: 0;
 	width: 100% !important;
 	font-size: 14px;
-  }
-  #legendDiv {
-	gap: 12px 8px;
-	font-size: 13px;
-	max-width: 99vw;
-	padding: 6px 2vw;
-  }
-  #bubbleChart {
-	width: 99vw !important;
-	height: 70vw !important;
-	min-width: 240px;
-	min-height: 180px;
   }
   #tooltip {
 	font-size: 14px !important;
@@ -117,10 +99,8 @@ body {
 	word-break: break-all;
 	padding: 7px;
   }
-}
-
-/* ツールチップ */
-#tooltip {
-  font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
-  pointer-events: none;
+  #bubbleChart {
+	/* SVGのwidth/heightは絶対にここで指定しない！ */
+	border-radius: 9px;
+  }
 }
