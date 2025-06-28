@@ -1,0 +1,126 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
+  background: #fafbfc;
+}
+
+/* 上部固定レジェンド */
+#legendWrapper {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 100;
+  background: #fff;
+  padding: 10px 0 8px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+#legendDiv {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 26px;
+  justify-content: center;
+  align-items: center;
+  max-width: 1200px;
+}
+
+#legendDiv span {
+  white-space: nowrap;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+}
+
+#legendDiv svg {
+  margin-right: 6px;
+}
+
+/* 操作UI */
+#controls button,
+#controls select {
+  font-size: 15px;
+  margin-right: 4px;
+  border-radius: 5px;
+  border: 1px solid #bbb;
+  padding: 4px 12px;
+  background: #f7f7fa;
+  transition: background 0.15s;
+}
+#controls button:hover {
+  background: #e8eefc;
+}
+
+#controls label {
+  font-size: 15px;
+  margin-left: 10px;
+}
+
+/* バブルチャートエリア */
+#bubbleArea {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: 18px;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 1100px) {
+  #bubbleChart { width: 98vw !important; height: 66vw !important; }
+  #legendDiv { max-width: 98vw; }
+}
+
+/* --- ★スマホ対応強化★ --- */
+@media (max-width: 700px) {
+  #controls {
+	font-size: 12px;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 8px;
+	max-width: 98vw;
+	margin: 8px auto;
+  }
+  #controls button,
+  #controls select,
+  #controls label,
+  #sizeSlider {
+	width: 100% !important;
+	margin-right: 0 !important;
+	margin-bottom: 6px;
+	box-sizing: border-box;
+  }
+  #memberSelect {
+	min-width: 0;
+	width: 100% !important;
+	font-size: 14px;
+  }
+  #legendDiv {
+	gap: 12px 8px;
+	font-size: 13px;
+	max-width: 99vw;
+	padding: 6px 2vw;
+  }
+  #bubbleChart {
+	width: 99vw !important;
+	height: 70vw !important;
+	min-width: 240px;
+	min-height: 180px;
+  }
+  #tooltip {
+	font-size: 14px !important;
+	max-width: 96vw;
+	word-break: break-all;
+	padding: 7px;
+  }
+}
+
+/* ツールチップ */
+#tooltip {
+  font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
+  pointer-events: none;
+}
