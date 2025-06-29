@@ -44,8 +44,10 @@ function drawLegend() {
     .join("span")
     .style("margin-right", "18px")
     .html(item =>
-      `<svg width="20" height="20" style="vertical-align:middle;"><circle cx="10" cy="10" r="9" fill="${colorScale(item)}" stroke="#555"/></svg>
-      <span style="font-size:16px;vertical-align:middle;">${item}</span>`
+      `<svg width="20" height="20" style="vertical-align:middle;">
+         <circle cx="10" cy="10" r="9" fill="${colorScale(item)}" stroke="#555"/>
+       </svg>
+       <span style="font-size:16px;vertical-align:middle;">${item}</span>`
     );
 }
 
@@ -87,7 +89,6 @@ function resizeChart() {
   let w = Math.min(window.innerWidth * 0.96, 900);
   let aspect = window.innerHeight / window.innerWidth;
   let h;
-  // 縦長なら縦長キャンバスに
   if (aspect > 1.2) {
     h = Math.round(w * 1.3);
   } else {
@@ -103,14 +104,15 @@ async function updateBubbles() {
   toggleMemberSelect();
 
   let showData = data;
-  if (mode === "name" && currentMembers.length > 0)
+  if (mode === "name" && currentMembers.length > 0) {
     showData = data.filter(d => currentMembers.includes(d.name));
+  }
 
   let centers;
 
   if (mode === "all") {
     centers = [{x: width/2, y: height/2}];
-    showData.forEach(d => { d.cx=width/2; d.cy=height/2; });
+    showData.forEach(d => { d.cx = width/2; d.cy = height/2; });
 
     const sliderV = +d3.select("#sizeSlider").node().value;
     let nodes = showData.map(d => ({
@@ -125,7 +127,9 @@ async function updateBubbles() {
   }
   else if (mode === "item") {
     centers = uniqueItems.map((item, i) => ({
-      item, x: width*(i+1)/(uniqueItems.length+1), y: height/2
+      item,
+      x: width*(i+1)/(uniqueItems.length+1),
+      y: height/2
     }));
     showData.forEach(d => {
       const c = centers.find(c => c.item === d.item);
@@ -143,155 +147,98 @@ async function updateBubbles() {
     runSimulation(nodes, centers, 450);
     await drawBubblesAsync(nodes, centers, 400);
   }
+  // ── 修正ブロック開始: 議員別表示の全体スケール調整方式 ──
   else if (mode === "name") {
+    // 対象の議員リスト
     const names = currentMembers.length ? currentMembers : uniqueNames;
     const n = names.length;
 
+    // グリッド配置計算（既存ロジック）
     let isMobile = window.innerWidth < 700;
     let aspect = window.innerHeight / window.innerWidth;
     let cols;
     if (isMobile) {
-      cols = Math.min(4, n); // スマホは横最大4つ
+      cols = Math.min(4, n);
     } else {
-      if (aspect > 1.2) {
-        cols = Math.ceil(Math.sqrt(n * 0.7)); // 縦長は列減らす
-      } else {
-        cols = Math.ceil(Math.sqrt(n));
-      }
+      cols = aspect > 1.2
+        ? Math.ceil(Math.sqrt(n * 0.7))
+        : Math.ceil(Math.sqrt(n));
       cols = Math.max(1, cols);
     }
     const rows = Math.ceil(n / cols);
-
     const paddingX = 10, paddingY = 10;
     const cellW = (width - paddingX * 2) / cols;
     const cellH = (height - paddingY * 2) / rows;
-
     centers = names.map((name, idx) => {
       const row = Math.floor(idx / cols);
       const col = idx % cols;
       return {
         name,
-        x: paddingX + cellW / 2 + col * cellW,
-        y: paddingY + cellH / 2 + row * cellH,
-        row, col
+        x: paddingX + cellW/2 + col*cellW,
+        y: paddingY + cellH/2 + row*cellH
       };
     });
 
-    let minR = 8;
-    let tryR = Math.min(cellW, cellH) * 0.23;
-    let shrinkRate = 0.92;
-    let overlap = true;
-    let nodes = [];
-    let finalR = tryR;
-    let lastNodes = null;
-
-    while (overlap && tryR > minR) {
-      nodes = showData.map(d => ({
-        ...d,
-        r: tryR,
-        cx: centers.find(c => c.name === d.name).x,
-        cy: centers.find(c => c.name === d.name).y
-      }));
-
-      runSimulation(nodes, centers, 200);
-
-      let clusters = names.map(name => {
-        let clusterNodes = nodes.filter(d => d.name === name);
-        if (clusterNodes.length === 0) return null;
-        let center = {
-          x: d3.mean(clusterNodes, d => d.x),
-          y: d3.mean(clusterNodes, d => d.y)
-        };
-        let outer = d3.max(clusterNodes, d => Math.hypot(d.x - center.x, d.y - center.y) + d.r);
-        return {center, radius: outer};
-      }).filter(Boolean);
-
-      overlap = false;
-      for (let i = 0; i < clusters.length; ++i) {
-        for (let j = i+1; j < clusters.length; ++j) {
-          let dx = clusters[i].center.x - clusters[j].center.x;
-          let dy = clusters[i].center.y - clusters[j].center.y;
-          let dist = Math.hypot(dx, dy);
-          if (dist < clusters[i].radius + clusters[j].radius) {
-            overlap = true;
-            break;
-          }
-        }
-        if (overlap) break;
-      }
-
-      await drawBubblesAsync(nodes, centers, 180);
-
-      if (overlap) {
-        tryR *= shrinkRate;
-        lastNodes = nodes;
-      } else {
-        finalR = tryR;
-      }
-    }
-
-    if (overlap && tryR <= minR) {
-      let subMinR = minR;
-      let trySubR = minR;
-      let subOverlap = true;
-      while (subOverlap && trySubR > 1) {
-        nodes = showData.map(d => ({
-          ...d,
-          r: trySubR,
-          cx: centers.find(c => c.name === d.name).x,
-          cy: centers.find(c => c.name === d.name).y
-        }));
-
-        runSimulation(nodes, centers, 100);
-
-        let clusters = names.map(name => {
-          let clusterNodes = nodes.filter(d => d.name === name);
-          if (clusterNodes.length === 0) return null;
-          let center = {
-            x: d3.mean(clusterNodes, d => d.x),
-            y: d3.mean(clusterNodes, d => d.y)
-          };
-          let outer = d3.max(clusterNodes, d => Math.hypot(d.x - center.x, d.y - center.y) + d.r);
-          return {center, radius: outer};
-        }).filter(Boolean);
-
-        subOverlap = false;
-        for (let i = 0; i < clusters.length; ++i) {
-          for (let j = i+1; j < clusters.length; ++j) {
-            let dx = clusters[i].center.x - clusters[j].center.x;
-            let dy = clusters[i].center.y - clusters[j].center.y;
-            let dist = Math.hypot(dx, dy);
-            if (dist < clusters[i].radius + clusters[j].radius) {
-              subOverlap = true;
-              break;
-            }
-          }
-          if (subOverlap) break;
-        }
-        if (!subOverlap) {
-          finalR = trySubR;
-          break;
-        }
-        trySubR *= 0.9;
-      }
-    }
-
-    if (lastNodes) {
-      await drawBubblesAsync(lastNodes, centers, 180);
-    }
-    nodes = showData.map(d => ({
+    // 基本半径を保持
+    const sliderV = +d3.select("#sizeSlider").node().value;
+    const baseNodes = showData.map(d => ({
       ...d,
-      r: finalR,
+      r0: rScale(d.amount) * sliderV,
       cx: centers.find(c => c.name === d.name).x,
       cy: centers.find(c => c.name === d.name).y
     }));
 
-    runSimulation(nodes, centers, 300);
-    await drawBubblesAsync(nodes, centers, 400);
+    // 全体スケール探索
+    let scaleFactor = 1;
+    const shrinkRate = 0.9;
+    const minScale = 0.1;
+    let overlap = true;
+
+    while (overlap && scaleFactor > minScale) {
+      // スケール適用
+      const nodes = baseNodes.map(d => ({
+        ...d,
+        r: d.r0 * scaleFactor
+      }));
+      runSimulation(nodes, centers, 200);
+
+      // クラスタごとに外接円を算出し重なり判定
+      const clusters = names.map(name => {
+        const clusterNodes = nodes.filter(d => d.name === name);
+        const cx = d3.mean(clusterNodes, d => d.x);
+        const cy = d3.mean(clusterNodes, d => d.y);
+        const outer = d3.max(clusterNodes, d => Math.hypot(d.x - cx, d.y - cy) + d.r);
+        return { cx, cy, r: outer };
+      });
+
+      overlap = false;
+      for (let i = 0; i < clusters.length && !overlap; i++) {
+        for (let j = i+1; j < clusters.length; j++) {
+          const dx = clusters[i].cx - clusters[j].cx;
+          const dy = clusters[i].cy - clusters[j].cy;
+          const dist = Math.hypot(dx, dy);
+          if (dist < clusters[i].r + clusters[j].r) {
+            overlap = true;
+            break;
+          }
+        }
+      }
+
+      if (overlap) scaleFactor *= shrinkRate;
+    }
+
+    // 最終描画
+    const finalNodes = baseNodes.map(d => ({
+      ...d,
+      r: d.r0 * scaleFactor
+    }));
+    runSimulation(finalNodes, centers, 300);
+    await drawBubblesAsync(finalNodes, centers, 400);
   }
+  // ── 修正ブロック終了 ──
 }
 
-// Forceシミュレーション（位置計算のみ）
+// Force シミュレーション（位置計算のみ）
 function runSimulation(nodes, centers, ticks = 400) {
   const sim = d3.forceSimulation(nodes)
     .force("x", d3.forceX(d => d.cx).strength(0.95))
@@ -303,7 +250,7 @@ function runSimulation(nodes, centers, ticks = 400) {
 }
 
 // アニメーション描画
-function drawBubblesAsync(nodes, centers, duration=300) {
+function drawBubblesAsync(nodes, centers, duration = 300) {
   return new Promise(resolve => {
     let bubble = svg.selectAll("circle.bubble")
       .data(nodes, d => d.name + d.item + d.amount);
@@ -317,31 +264,26 @@ function drawBubblesAsync(nodes, centers, duration=300) {
         .attr("fill", d => colorScale(d.item))
         .attr("stroke", "#555")
         .attr("stroke-width", 1.2)
-        .on("mousemove", function (e, d) { showTooltip(e, d); })
+        .on("mousemove", (e, d) => showTooltip(e, d))
         .on("mouseleave", hideTooltip),
       update => update
         .transition().duration(duration)
         .attr("r", d => d.r)
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
-        .attr("fill", d => colorScale(d.item))
-        .on("end", (_,i,nodesArr) => {
-          if (i === nodes.length - 1) setTimeout(resolve, duration);
-        })
+        .on("end", (_, i) => { if (i === nodes.length - 1) setTimeout(resolve, duration); })
     );
     bubble.exit().remove();
 
     drawLabels(centers);
-
     setTimeout(resolve, duration + 50);
   });
 }
 
-// ラベル描画
 function drawLabels(centers) {
   svg.selectAll("text.cluster-label").remove();
   if (!centers) return;
-  if (centers.length > 0 && centers[0].name) {
+  if (centers[0].name) {
     svg.selectAll("text.cluster-label")
       .data(centers)
       .enter()
@@ -362,7 +304,7 @@ function drawLabels(centers) {
       .style("stroke", "none")
       .style("fill", "#333")
       .text(d => d.name);
-  } else if (centers.length > 0 && centers[0].item) {
+  } else {
     svg.selectAll("text.cluster-label")
       .data(centers)
       .enter()
@@ -395,6 +337,7 @@ function showTooltip(e, d) {
       `議員: ${d.name}<br>項目: ${d.item}<br>金額: ${d.amount.toLocaleString()}円`
     );
 }
+
 function hideTooltip() {
   d3.select("#tooltip").style("display", "none");
 }
