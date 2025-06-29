@@ -77,6 +77,16 @@ function toggleMemberSelect() {
   }
 }
 
+// ▼ 追加：スライダー表示切替
+function toggleSlider() {
+  const slider = document.getElementById("sizeSlider");
+  if (mode === "name") {
+    slider.style.display = "none";
+  } else {
+    slider.style.display = "";
+  }
+}
+
 function addControls() {
   d3.select("#modeAll").on("click", async () => { mode="all"; await updateBubbles(); });
   d3.select("#modeName").on("click", async () => { mode="name"; await updateBubbles(); });
@@ -102,6 +112,7 @@ function resizeChart() {
 
 async function updateBubbles() {
   toggleMemberSelect();
+  toggleSlider();
 
   let showData = data;
   if (mode === "name" && currentMembers.length > 0) {
@@ -147,13 +158,13 @@ async function updateBubbles() {
     runSimulation(nodes, centers, 450);
     await drawBubblesAsync(nodes, centers, 400);
   }
-  // ── 修正ブロック開始: 議員別表示の全体スケール調整方式 ──
+  // ── 議員別表示の全体スケール調整方式 ──
   else if (mode === "name") {
     // 対象の議員リスト
     const names = currentMembers.length ? currentMembers : uniqueNames;
     const n = names.length;
 
-    // グリッド配置計算（既存ロジック）
+    // グリッド配置計算
     let isMobile = window.innerWidth < 700;
     let aspect = window.innerHeight / window.innerWidth;
     let cols;
@@ -180,7 +191,7 @@ async function updateBubbles() {
     });
 
     // 基本半径を保持
-    const sliderV = +d3.select("#sizeSlider").node().value;
+    const sliderV = 1; // スライダーを無視して最大表示
     const baseNodes = showData.map(d => ({
       ...d,
       r0: rScale(d.amount) * sliderV,
@@ -235,7 +246,7 @@ async function updateBubbles() {
     runSimulation(finalNodes, centers, 300);
     await drawBubblesAsync(finalNodes, centers, 400);
   }
-  // ── 修正ブロック終了 ──
+  // ── 議員別スケール調整ここまで ──
 }
 
 // Force シミュレーション（位置計算のみ）
@@ -256,76 +267,75 @@ function drawBubblesAsync(nodes, centers, duration = 300) {
       .data(nodes, d => d.name + d.item + d.amount);
 
     bubble.join(
+      // enter: サイズ0から指定サイズにふわっと
       enter => enter.append("circle")
         .attr("class", "bubble")
-        .attr("r", d => d.r)
+        .attr("r", 0)
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
         .attr("fill", d => colorScale(d.item))
         .attr("stroke", "#555")
         .attr("stroke-width", 1.2)
         .on("mousemove", (e, d) => showTooltip(e, d))
-        .on("mouseleave", hideTooltip),
+        .on("mouseleave", hideTooltip)
+        .transition().duration(duration)
+        .attr("r", d => d.r),
+      // update: 移動とサイズ変更
       update => update
         .transition().duration(duration)
         .attr("r", d => d.r)
         .attr("cx", d => d.x)
         .attr("cy", d => d.y)
-        .on("end", (_, i) => { if (i === nodes.length - 1) setTimeout(resolve, duration); })
+        .on("end", (_, i) => { if (i === nodes.length - 1) setTimeout(resolve, duration); }),
+      // exit: サイズ0に縮んで消える
+      exit => exit
+        .transition().duration(duration/2)
+        .attr("r", 0)
+        .remove()
     );
-    bubble.exit().remove();
 
-    drawLabels(centers);
+    drawLabels(centers, duration);
     setTimeout(resolve, duration + 50);
   });
 }
 
-function drawLabels(centers) {
-  svg.selectAll("text.cluster-label").remove();
+// クラスタラベルのアニメーション
+function drawLabels(centers, duration = 400) {
   if (!centers) return;
-  if (centers[0].name) {
-    svg.selectAll("text.cluster-label")
-      .data(centers)
-      .enter()
-      .append("text")
-      .attr("class", "cluster-label")
-      .attr("x", d => d.x)
-      .attr("y", d => d.y)
-      .attr("text-anchor", "middle")
-      .attr("dy", "-1.3em")
-      .style("font-size", "15px")
-      .style("font-weight", 600)
-      .style("stroke", "#fff")
-      .style("stroke-width", 4)
-      .style("stroke-linejoin", "round")
-      .style("paint-order", "stroke")
-      .text(d => d.name)
-      .clone(true)
-      .style("stroke", "none")
-      .style("fill", "#333")
-      .text(d => d.name);
-  } else {
-    svg.selectAll("text.cluster-label")
-      .data(centers)
-      .enter()
-      .append("text")
-      .attr("class", "cluster-label")
-      .attr("x", d => d.x)
-      .attr("y", d => d.y)
-      .attr("text-anchor", "middle")
-      .attr("dy", "-1.3em")
-      .style("font-size", "15px")
-      .style("font-weight", 600)
-      .style("stroke", "#fff")
-      .style("stroke-width", 4)
-      .style("stroke-linejoin", "round")
-      .style("paint-order", "stroke")
-      .text(d => d.item)
-      .clone(true)
-      .style("stroke", "none")
-      .style("fill", "#333")
-      .text(d => d.item);
-  }
+  let label = svg.selectAll("text.cluster-label")
+    .data(centers, d => d.name || d.item);
+
+  // enter
+  label.enter()
+    .append("text")
+    .attr("class", "cluster-label")
+    .attr("x", d => d.x)
+    .attr("y", d => d.y)
+    .attr("text-anchor", "middle")
+    .attr("dy", "-1.3em")
+    .style("font-size", "15px")
+    .style("font-weight", 600)
+    .style("stroke", "#fff")
+    .style("stroke-width", 4)
+    .style("stroke-linejoin", "round")
+    .style("paint-order", "stroke")
+    .style("opacity", 0)
+    .text(d => d.name || d.item)
+    .transition().duration(duration)
+    .style("opacity", 1);
+
+  // update
+  label.transition().duration(duration)
+    .attr("x", d => d.x)
+    .attr("y", d => d.y)
+    .text(d => d.name || d.item)
+    .style("opacity", 1);
+
+  // exit
+  label.exit()
+    .transition().duration(duration/2)
+    .style("opacity", 0)
+    .remove();
 }
 
 function showTooltip(e, d) {
