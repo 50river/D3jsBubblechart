@@ -440,13 +440,16 @@ function updateMinimap(nodes) {
     exit => exit.remove()
   );
 
+  // 実際に見えている領域の高さを求める
+  const visibleH = Math.min(chartContainer.clientHeight, chartContainer.scrollHeight);
+
   let vp = minimap.selectAll("rect.viewport").data([0]);
   vp = vp.join("rect")
     .attr("class", "viewport")
     .attr("x", 0)
     .attr("width", minimapWidth)
     .attr("y", chartContainer.scrollTop * scaleY)
-    .attr("height", chartContainer.clientHeight * scaleY);
+    .attr("height", visibleH * scaleY);
 
   // ビューポート矩形をドラッグ可能にし、スクロール位置に反映
   vp.call(
@@ -464,9 +467,10 @@ function updateMinimap(nodes) {
 function updateViewportRect() {
   if (mode !== "name") return;
   const scaleY = minimapHeight / height;
+  const visibleH = Math.min(chartContainer.clientHeight, chartContainer.scrollHeight);
   minimap.select("rect.viewport")
     .attr("y", chartContainer.scrollTop * scaleY)
-    .attr("height", chartContainer.clientHeight * scaleY);
+    .attr("height", visibleH * scaleY);
 }
 
 chartContainer.addEventListener("scroll", updateViewportRect);
