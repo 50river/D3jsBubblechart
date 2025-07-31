@@ -8,6 +8,10 @@ const svg = d3.select("#bubbleChart");
 let width = +svg.attr("width");    // SVGエリア横幅
 let height = +svg.attr("height");  // SVGエリア縦幅
 const colorScale = d3.scaleOrdinal(d3.schemeCategory10); // 項目ごとの色
+const chartContainer = document.getElementById("chartContainer");
+const minimap = d3.select("#minimap");
+let minimapWidth = +minimap.attr("width");
+let minimapHeight = +minimap.attr("height");
 
 // グローバル変数（データ構造）
 let data = [];           // data.csv読み込み後のデータ配列
@@ -158,6 +162,7 @@ async function updateBubbles() {
 
     runSimulation(nodes, centers, 450);
     await drawBubblesAsync(nodes, centers, 400);
+    updateMinimap(nodes);
   }
   // ------ 項目ごとモード ------
   else if (mode === "item") {
@@ -182,28 +187,24 @@ async function updateBubbles() {
 
     runSimulation(nodes, centers, 450);
     await drawBubblesAsync(nodes, centers, 400);
+    updateMinimap(nodes);
   }
   // ------ 議員ごとモード：バブルが絶対重ならない最大スケール自動探索 ------
   else if (mode === "name") {
     const names = currentMembers.length ? currentMembers : uniqueNames;
     const n = names.length;
 
-    // グリッド配置の列数を決定（縦長画面は列数減）
-    let isMobile = window.innerWidth < 700;
-    let aspect = window.innerHeight / window.innerWidth;
-    let cols;
-    if (isMobile) {
-      cols = Math.min(4, n);
-    } else {
-      cols = aspect > 1.2
-        ? Math.ceil(Math.sqrt(n * 0.7))
-        : Math.ceil(Math.sqrt(n));
-      cols = Math.max(1, cols);
-    }
+    // 常に4列で表示し、必要に応じて縦方向へスクロールさせる
+    const cols = Math.min(4, n);
     const rows = Math.ceil(n / cols);
+
     const paddingX = 10, paddingY = 10;
     const cellW = (width - paddingX * 2) / cols;
-    const cellH = (height - paddingY * 2) / rows;
+    const cellH = cellW; // 正方形セル
+
+    // 全体の高さを行数に合わせて更新し、スクロールできるようにする
+    height = rows * cellH + paddingY * 2;
+    svg.attr("height", height);
     centers = names.map((name, idx) => {
       const row = Math.floor(idx / cols);
       const col = idx % cols;
@@ -267,6 +268,7 @@ async function updateBubbles() {
     }));
     runSimulation(finalNodes, centers, 300);
     await drawBubblesAsync(finalNodes, centers, 400);
+    updateMinimap(finalNodes);
   }
 }
 
@@ -374,3 +376,47 @@ function showTooltip(e, d) {
 function hideTooltip() {
   d3.select("#tooltip").style("display", "none");
 }
+
+// -------- ミニマップ更新 --------
+function updateMinimap(nodes) {
+  const scaleX = minimapWidth / width;
+  const scaleY = minimapHeight / height;
+  let mmCircles = minimap.selectAll("circle").data(nodes, d => d.name + d.item + d.amount);
+  mmCircles.join(
+    enter => enter.append("circle")
+      .attr("cx", d => d.x * scaleX)
+      .attr("cy", d => d.y * scaleY)
+      .attr("r", d => d.r * scaleX)
+      .attr("fill", d => colorScale(d.item))
+      .attr("stroke", "#555")
+      .attr("stroke-width", 0.5),
+    update => update
+      .attr("cx", d => d.x * scaleX)
+      .attr("cy", d => d.y * scaleY)
+      .attr("r", d => d.r * scaleX),
+    exit => exit.remove()
+  );
+
+  let vp = minimap.selectAll("rect.viewport").data([0]);
+  vp.join("rect")
+    .attr("class", "viewport")
+    .attr("x", 0)
+    .attr("width", minimapWidth)
+    .attr("y", chartContainer.scrollTop * scaleY)
+    .attr("height", chartContainer.clientHeight * scaleY);
+}
+
+function updateViewportRect() {
+  const scaleY = minimapHeight / height;
+  minimap.select("rect.viewport")
+    .attr("y", chartContainer.scrollTop * scaleY)
+    .attr("height", chartContainer.clientHeight * scaleY);
+}
+
+chartContainer.addEventListener("scroll", updateViewportRect);
+minimap.on("click", (event) => {
+  const y = d3.pointer(event)[1];
+  const scaleY = minimapHeight / height;
+  chartContainer.scrollTop = y / scaleY - chartContainer.clientHeight / 2;
+  updateViewportRect();
+});
