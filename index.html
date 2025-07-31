@@ -17,8 +17,11 @@
 	<select id="memberSelect" multiple size="8" style="max-width: 200px;"></select>
   </div>
   <div id="legendDiv"></div>
-  <div style="text-align:center;">
-	<svg id="bubbleChart" width="1200" height="800"></svg>
+  <div id="chartContainer" style="margin:0 auto; max-width:950px; height:800px; overflow-y:auto; position:relative; text-align:center;">
+        <svg id="bubbleChart" width="1200" height="800"></svg>
+  </div>
+  <div id="minimapWrapper">
+        <svg id="minimap" width="200" height="150"></svg>
   </div>
   <div id="tooltip" style="position:absolute; display:none; pointer-events:none; background:#fff8; border:1px solid #ccc; padding:10px; border-radius:6px; font-size:16px; z-index:20;"></div>
   <script src="main.js"></script>

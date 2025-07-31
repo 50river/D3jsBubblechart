@@ -54,6 +54,28 @@ label[for="memberSelect"] {
   max-width: 100vw;
   max-height: 100vh;
 }
+#chartContainer {
+  height: 800px;
+  overflow-y: auto;
+  position: relative;
+  text-align: center;
+}
+#minimapWrapper {
+  position: fixed;
+  right: 15px;
+  bottom: 15px;
+  background: #ffffffcc;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 3px;
+  z-index: 30;
+}
+#minimap .viewport {
+  fill: none;
+  stroke: red;
+  stroke-width: 2;
+  pointer-events: none;
+}
 #tooltip {
   position: absolute;
   display: none;
