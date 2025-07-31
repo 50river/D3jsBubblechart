@@ -71,10 +71,11 @@ label[for="memberSelect"] {
   z-index: 30;
 }
 #minimap .viewport {
-  fill: none;
+  fill: rgba(255,0,0,0.05);
   stroke: red;
   stroke-width: 2;
-  pointer-events: none;
+  pointer-events: all;
+  cursor: move;
 }
 #tooltip {
   position: absolute;

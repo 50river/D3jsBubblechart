@@ -13,6 +13,7 @@ const minimap = d3.select("#minimap");
 let minimapWidth = +minimap.attr("width");
 let minimapHeight = +minimap.attr("height");
 
+const minimapRScale = 0.6;
 // グローバル変数（データ構造）
 let data = [];           // data.csv読み込み後のデータ配列
 let items = [];          // items.csv読み込み後の項目配列
@@ -386,24 +387,36 @@ function updateMinimap(nodes) {
     enter => enter.append("circle")
       .attr("cx", d => d.x * scaleX)
       .attr("cy", d => d.y * scaleY)
-      .attr("r", d => d.r * scaleX)
+      .attr("r", d => d.r * scaleX * minimapRScale)
       .attr("fill", d => colorScale(d.item))
       .attr("stroke", "#555")
       .attr("stroke-width", 0.5),
     update => update
       .attr("cx", d => d.x * scaleX)
       .attr("cy", d => d.y * scaleY)
-      .attr("r", d => d.r * scaleX),
+      .attr("r", d => d.r * scaleX * minimapRScale),
     exit => exit.remove()
   );
 
   let vp = minimap.selectAll("rect.viewport").data([0]);
-  vp.join("rect")
+  vp = vp.join("rect")
     .attr("class", "viewport")
     .attr("x", 0)
     .attr("width", minimapWidth)
     .attr("y", chartContainer.scrollTop * scaleY)
     .attr("height", chartContainer.clientHeight * scaleY);
+
+  // ビューポート矩形をドラッグ可能にし、スクロール位置に反映
+  vp.call(
+    d3.drag()
+      .on("drag", (event) => {
+        const rectH = parseFloat(vp.attr("height"));
+        let newY = event.y - rectH / 2;
+        newY = Math.max(0, Math.min(minimapHeight - rectH, newY));
+        vp.attr("y", newY);
+        chartContainer.scrollTop = newY / scaleY;
+      })
+  );
 }
 
 function updateViewportRect() {
