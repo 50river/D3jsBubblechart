@@ -380,21 +380,63 @@ function hideTooltip() {
 
 // -------- ミニマップ更新 --------
 function updateMinimap(nodes) {
+  // 議員ごと表示以外ではミニマップを非表示にする
+  if (mode !== "name") {
+    d3.select("#minimapWrapper").style("display", "none");
+    return;
+  }
+
+  d3.select("#minimapWrapper").style("display", "");
+
   const scaleX = minimapWidth / width;
   const scaleY = minimapHeight / height;
-  let mmCircles = minimap.selectAll("circle").data(nodes, d => d.name + d.item + d.amount);
+
+  // 議員ごとにまとめて最大金額バブルの色を取得
+  const grouped = d3.groups(nodes, d => d.name);
+  const aggNodes = grouped.map(([name, list]) => {
+    const cx = d3.mean(list, d => d.x);
+    const cy = d3.mean(list, d => d.y);
+    const maxN = list.reduce((a, b) => (b.amount > a.amount ? b : a));
+    return {
+      name,
+      x: cx,
+      y: cy,
+      r: maxN.r,
+      color: colorScale(maxN.item)
+    };
+  });
+
+  let mmCircles = minimap.selectAll("circle").data(aggNodes, d => d.name);
   mmCircles.join(
     enter => enter.append("circle")
       .attr("cx", d => d.x * scaleX)
       .attr("cy", d => d.y * scaleY)
       .attr("r", d => d.r * scaleX * minimapRScale)
-      .attr("fill", d => colorScale(d.item))
+      .attr("fill", d => d.color)
       .attr("stroke", "#555")
       .attr("stroke-width", 0.5),
     update => update
       .attr("cx", d => d.x * scaleX)
       .attr("cy", d => d.y * scaleY)
-      .attr("r", d => d.r * scaleX * minimapRScale),
+      .attr("r", d => d.r * scaleX * minimapRScale)
+      .attr("fill", d => d.color),
+    exit => exit.remove()
+  );
+
+  let mmLabels = minimap.selectAll("text.mm-label").data(aggNodes, d => d.name);
+  mmLabels.join(
+    enter => enter.append("text")
+      .attr("class", "mm-label")
+      .attr("text-anchor", "middle")
+      .style("font-size", "10px")
+      .style("pointer-events", "none")
+      .attr("x", d => d.x * scaleX)
+      .attr("y", d => d.y * scaleY + 3)
+      .text(d => d.name[0]),
+    update => update
+      .attr("x", d => d.x * scaleX)
+      .attr("y", d => d.y * scaleY + 3)
+      .text(d => d.name[0]),
     exit => exit.remove()
   );
 
@@ -420,6 +462,7 @@ function updateMinimap(nodes) {
 }
 
 function updateViewportRect() {
+  if (mode !== "name") return;
   const scaleY = minimapHeight / height;
   minimap.select("rect.viewport")
     .attr("y", chartContainer.scrollTop * scaleY)
